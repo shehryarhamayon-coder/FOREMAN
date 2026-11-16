@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ResiTech</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ResiTech">
+<meta name="theme-color" content="#f3f5f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d131e" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout idea: one-column phone app, sticky header, bottom tab bar; blueprint-blue ink, state shown as pills and stripes. */
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --ink:#132039; --muted:#5a6680; --line:#dce2ec; --chip:#edf1f8;
+  --accent:#1d5cc4; --accent-ink:#ffffff; --accent-soft:#e3ecfb;
+  --bad:#c0352b; --bad-soft:#fbe9e7; --warn:#a85b06; --warn-soft:#fdf1df; --good:#1c7a4b; --good-soft:#e2f4ea;
+  --font-body:-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-num:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r:12px; --shadow:0 1px 2px rgba(19,32,57,.06),0 4px 14px rgba(19,32,57,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d131e; --surface:#151d2c; --ink:#e5ebf4; --muted:#95a1b8; --line:#253045; --chip:#1c2639;
+    --accent:#76a5ff; --accent-ink:#0b1220; --accent-soft:#1b2a47;
+    --bad:#ff7d70; --bad-soft:#3a1c1b; --warn:#f2a650; --warn-soft:#3a2a15; --good:#52c78e; --good-soft:#15301f;
+    --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d131e; --surface:#151d2c; --ink:#e5ebf4; --muted:#95a1b8; --line:#253045; --chip:#1c2639;
+  --accent:#76a5ff; --accent-ink:#0b1220; --accent-soft:#1b2a47;
+  --bad:#ff7d70; --bad-soft:#3a1c1b; --warn:#f2a650; --warn-soft:#3a2a15; --good:#52c78e; --good-soft:#15301f;
+  --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+#app{display:flex;flex-direction:column;min-height:100%;max-width:760px;margin:0 auto}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;flex:1;min-width:0}
+.brand b{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.brand span{font-size:12px;color:var(--muted)}
+.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--good)} .dot.bad{background:var(--bad)}
+main{flex:1;padding:16px 16px calc(96px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:18px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+nav.tabs .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+nav.tabs button{background:none;border:0;padding:8px 2px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);cursor:pointer}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="true"]{color:var(--accent);background:var(--accent-soft);font-weight:600}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0;font-weight:600;display:flex;align-items:center;gap:8px}
+h2 .count{background:var(--chip);color:var(--ink);border-radius:20px;padding:0 8px;font-size:12px;letter-spacing:0}
+.section{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);font-size:14px;line-height:1.2}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.danger{color:var(--bad)}
+.btn.wa{background:#1f8f4e;border-color:#1f8f4e;color:#fff}
+.btn:focus-visible,nav.tabs button:focus-visible,.card:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hero-act{display:flex;gap:10px}
+.hero-act .btn{flex:1;justify-content:center;padding:13px 14px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (min-width:560px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;border-left:4px solid var(--line)}
+.tile .v{font-family:var(--font-num);font-size:22px;font-variant-numeric:tabular-nums}
+.tile .l{font-size:12px;color:var(--muted)}
+.tile.bad{border-left-color:var(--bad)} .tile.warn{border-left-color:var(--warn)} .tile.good{border-left-color:var(--good)} .tile.acc{border-left-color:var(--accent)}
+.list{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;position:relative}
+.card.click{cursor:pointer}
+.card.click:hover{border-color:var(--accent)}
+.card.stripe-bad{border-left:4px solid var(--bad)} .card.stripe-warn{border-left:4px solid var(--warn)} .card.stripe-good{border-left:4px solid var(--good)} .card.stripe-acc{border-left:4px solid var(--accent)}
+.card .t{font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card .s{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.card .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;border-radius:20px;padding:1px 9px;background:var(--chip);color:var(--muted);white-space:nowrap}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.good{background:var(--good-soft);color:var(--good)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+.money{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.empty{border:1.5px dashed var(--line);border-radius:var(--r);padding:16px;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chips button{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;overflow-wrap:anywhere}
+table.log{width:100%;border-collapse:collapse;font-size:14px}
+table.log th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.log td{padding:8px;border-bottom:1px solid var(--line)}
+table.log td.r,table.log th.r{text-align:right}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+/* modal */
+#modal{position:fixed;inset:0;z-index:20;background:rgba(8,14,26,.5);display:none;align-items:flex-end;justify-content:center}
+#modal.open{display:flex}
+#modal .sheet{background:var(--bg);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px}
+@media (min-width:700px){#modal{align-items:center}#modal .sheet{border-radius:18px;max-height:88%}}
+.sheet-h{display:flex;align-items:center;gap:10px}
+.sheet-h h3{margin:0;font-size:18px;flex:1;text-wrap:balance}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.field textarea{min-height:110px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}}
+.note{font-size:13px;color:var(--muted)}
+.ai-box{background:var(--accent-soft);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.check input{width:18px;height:18px}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%}
+#toast.show{opacity:1}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:14px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin{animation:none}#toast{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand"><b>ResiTech Assistant</b><span id="today-label"></span></div>
+    <button class="btn small" data-act="settings" id="status" aria-label="Backup and settings">Backup</button>
+  </header>
+  <main id="main"></main>
+</div>
+<nav class="tabs" aria-label="Sections"><div class="in" id="tabs"></div></nav>
+<div id="modal" role="dialog" aria-modal="true"><div class="sheet" id="sheet"></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- constants ---------- */
+const COLS = ["contacts","followups","jobs","units","rent","templates"];
+const S = {contacts:[],followups:[],jobs:[],units:[],rent:[],templates:[]};
+const TYPES = [["client","Client"],["tenant","Tenant"],["supplier","Supplier"],["trade","Trade / sub"],["other","Other"]];
+const CHANNELS = [["whatsapp","WhatsApp"],["sms","Messages"],["messenger","Messenger"],["call","Call"],["email","Email"],["inperson","In person"]];
+const FSTATUS = [["me","Waiting on me"],["them","Waiting on them"],["scheduled","Scheduled"],["done","Done"]];
+const JSTATUS = [["lead","Lead"],["quoted","Quote sent"],["booked","Booked"],["active","In progress"],["unpaid","Done, unpaid"],["paid","Paid"],["lost","Lost"]];
+const METHODS = [["etransfer","e-Transfer"],["cash","Cash"],["cheque","Cheque"]];
+const lab = (arr, v) => (arr.find(x => x[0] === v) || [v, v || "—"])[1];
+const ICONS = {
+  today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l2 5 4-10 2 5h4"/></svg>',
+  people:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg>',
+  jobs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg>',
+  rent:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l2 2M15 8l2 2"/></svg>',
+  templates:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>'
+};
+const TABS = [["today","Today"],["people","People"],["jobs","Jobs"],["rent","Rent"],["templates","Messages"]];
+
+/* ---------- state ---------- */
+let db = null, sample = null, aiImages = false, mode = "connecting";
+let tab = "today", peopleFilter = "all", peopleQuery = "", jobFilter = "open";
+const loaded = new Set();
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const todayStr = () => ymd(new Date());
+const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
+const monthStr = (d = new Date()) => d.getFullYear() + "-" + pad(d.getMonth() + 1);
+const parseD = s => { if (!s) return null; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d || 1); };
+const fmtDate = s => { const d = parseD(s); if (!d) return ""; return d.toLocaleDateString("en-CA", {month:"short", day:"numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric"}); };
+const fmtMonth = s => { const d = parseD(s + "-01"); return d ? d.toLocaleDateString("en-CA", {month:"long", year:"numeric"}) : s; };
+const money = n => new Intl.NumberFormat("en-CA", {style:"currency", currency:"CAD"}).format(Number(n) || 0);
+const num = v => { const n = parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, "")); return isNaN(n) ? 0 : n; };
+const firstName = n => String(n || "").trim().split(/\s+/)[0] || "";
+const byId = (col, id) => S[col].find(x => x.id === id);
+const contactName = (id, fallback) => (byId("contacts", id) || {}).name || fallback || "Unknown";
+function phoneDigits(p) { let d = String(p || "").replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return d; }
+function dueInfo(due, status) {
+  if (!due || status === "done") return null;
+  const t = todayStr();
+  if (due < t) return {cls:"bad", text:"Overdue · " + fmtDate(due)};
+  if (due === t) return {cls:"warn", text:"Today"};
+  if (due === addDays(1)) return {cls:"acc", text:"Tomorrow"};
+  return {cls:"", text:fmtDate(due)};
+}
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600); }
+async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; } }
+
+/* ---------- storage: everything stays on this phone ---------- */
+const KEY = "resitech.v1";
+let settings = {email:"", phone:"", lastBackup:0};
+function persist() {
+  try { localStorage.setItem(KEY, JSON.stringify({v:1, S, settings})); return true; }
+  catch (e) { toast("Couldn't save on this phone. Storage may be full: make a backup."); return false; }
+}
+async function save(col, obj) {
+  const id = obj.id || uid();
+  const rec = Object.assign({}, obj, {id, updated: Date.now()});
+  if (!rec.created) rec.created = Date.now();
+  const i = S[col].findIndex(x => x.id === id);
+  if (i >= 0) S[col][i] = rec; else S[col].push(rec);
+  persist(); render();
+  return id;
+}
+async function remove(col, id) { S[col] = S[col].filter(x => x.id !== id); persist(); render(); }
+function setStatus() {
+  const days = settings.lastBackup ? Math.floor((Date.now() - settings.lastBackup) / 864e5) : null;
+  const stale = days === null ? hasData() : days > 14;
+  const el = $("#status");
+  el.innerHTML = (stale ? '<span class="dot bad"></span>' : '<span class="dot ok"></span>') + '<span>Backup</span>';
+}
+const hasData = () => S.contacts.length + S.jobs.length + S.units.length + S.followups.length > 0;
+const DEFAULT_TEMPLATES = [
+  ["New inquiry","client","Hi [name], thanks for reaching out! I'd be happy to take a look at your [project]. Are you free for a quick site visit on [day] at [time]? After I see the space I'll send you a written quote within [2] days.\n– Shehryar, ResiTech Constructions"],
+  ["Sending a quote","client","Hi [name], here's my quote for [project]: $[amount] + GST. That covers [scope], and materials are [included / extra]. I can start as early as [date], and the work should take about [X] days. A [30]% deposit books your spot. Any questions, just ask!"],
+  ["Quote follow-up","client","Hi [name], just checking in on the quote I sent for [project] on [date]. Happy to adjust anything or answer questions. My [month] schedule is filling up, so let me know if you'd like to lock in a start date."],
+  ["Job start confirmation","client","Hi [name], confirming we start [project] on [date] at around [time]. Please have [area] cleared, and we'll need access to [water / power / parking]. See you then!"],
+  ["Progress update","client","Hi [name], quick update: [what's done]. Next up is [next step], and we're on track to finish by [date]."],
+  ["Extra work found","client","Hi [name], while working on [area] we found [issue]. Fixing it properly will cost an extra $[amount] and add about [X] days. Reply \"approved\" if you'd like me to go ahead, and I'll add it to the final invoice."],
+  ["Job complete + final invoice","client","Hi [name], [project] is all done! Thanks for trusting ResiTech with it. The remaining balance is $[amount], and you can e-transfer it to [email]. If you're happy with the work, a quick Google review would really help me out: [link]."],
+  ["Payment reminder","client","Hi [name], friendly reminder that the balance of $[amount] for [project] was due on [date]. You can e-transfer it to [email]. Let me know if anything's holding it up."],
+  ["Rent reminder","tenant","Hi [name], friendly reminder that rent of $[amount] is due on [date]. E-transfer to [email] works as usual. Thanks!"],
+  ["Rent is late","tenant","Hi [name], I haven't received the $[amount] rent that was due on [date]. Can you let me know when to expect it? If something's come up, tell me and we can talk it through."],
+  ["Maintenance request received","tenant","Hi [name], thanks for letting me know about the [issue]. I'll [come by / send someone] on [day] between [time window]. If it gets worse or turns into an emergency (water leak, no heat, no power), call me right away at [phone]."],
+  ["Need to enter the unit","tenant","Hi [name], I need to come in on [date] between [time window] to [reason]. Let me know if that time doesn't work and we'll find another one. Thanks!"],
+  ["Repair done","tenant","Hi [name], the [issue] is fixed. Let me know if you notice anything else. Thanks for your patience!"]
+];
+function init() {
+  $("#today-label").textContent = new Date().toLocaleDateString("en-CA", {weekday:"long", month:"long", day:"numeric"});
+  const h = location.hash.slice(1); if (TABS.some(t => t[0] === h)) tab = h;
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { mode = "nostore"; }
+  if (raw && raw.S) { COLS.forEach(c => { S[c] = Array.isArray(raw.S[c]) ? raw.S[c] : []; }); settings = Object.assign(settings, raw.settings || {}); }
+  else {
+    S.templates = DEFAULT_TEMPLATES.map(([title, f, body], i) => ({id: "t" + pad(i + 1), title, for: f, body, order: i + 1, created: Date.now()}));
+    try { localStorage.setItem("resitech.probe", "1"); localStorage.removeItem("resitech.probe"); persist(); } catch (e) { mode = "nostore"; }
+  }
+  if (mode !== "nostore") mode = "local";
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  renderTabs(); render(); setStatus();
+}
+
+/* ---------- backup ---------- */
+function backupJSON() { return JSON.stringify({app:"ResiTech", v:1, exported:new Date().toISOString(), S, settings:{email:settings.email, phone:settings.phone}}, null, 1); }
+async function exportBackup() {
+  const name = "ResiTech-backup-" + todayStr() + ".json";
+  const blob = new Blob([backupJSON()], {type:"application/json"});
+  const file = new File([blob], name, {type:"application/json"});
+  try {
+    if (navigator.canShare && navigator.canShare({files:[file]})) { await navigator.share({files:[file], title:name}); }
+    else { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+    settings.lastBackup = Date.now(); persist(); setStatus(); toast("Backup made"); openSettings();
+  } catch (e) { if (e && e.name !== "AbortError") toast("Couldn't make the backup. Try again."); }
+}
+function importBackup(file) {
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d || d.app !== "ResiTech" || !d.S) throw 0;
+      COLS.forEach(c => { S[c] = Array.isArray(d.S[c]) ? d.S[c] : []; });
+      settings = Object.assign(settings, d.settings || {});
+      persist(); render(); setStatus(); closeModal(); toast("Backup restored");
+    } catch (e) { toast("That file isn't a ResiTech backup."); }
+  };
+  r.readAsText(file);
+}
+function openSettings() {
+  const days = settings.lastBackup ? Math.floor((Date.now() - settings.lastBackup) / 864e5) : null;
+  const body =
+    '<div class="card stripe-good"><div class="t">Your data stays on this phone</div><div class="s">Nothing is uploaded anywhere. The flip side: if you lose or reset this phone, the only copy is your latest backup. Make one every week or two and save it to Files, iCloud Drive, or email it to yourself.</div></div>' +
+    '<div class="row"><button class="btn primary" id="b_exp">Make a backup</button><span class="note">' + (days === null ? "No backup yet" : days === 0 ? "Last backup: today" : "Last backup: " + days + " day" + (days === 1 ? "" : "s") + " ago") + '</span></div>' +
+    '<div class="field"><label for="b_imp">Restore from a backup</label><input type="file" id="b_imp" accept=".json,application/json"><span class="note">This replaces everything in the app with what\'s in the backup.</span></div>' +
+    '<h2>Fill-ins for your messages</h2>' +
+    '<div class="grid2"><div class="field"><label for="s_email">e-Transfer email</label><input id="s_email" type="email" value="' + esc(settings.email) + '" placeholder="fills [email]"></div><div class="field"><label for="s_phone">Your phone</label><input id="s_phone" type="tel" value="' + esc(settings.phone) + '" placeholder="fills [phone]"></div></div>' +
+    '<div class="row"><span class="spacer"></span><button class="btn primary" id="s_save">Save</button></div>';
+  openModal("Backup & settings", body, sh => {
+    $("#b_exp", sh).onclick = exportBackup;
+    $("#b_imp", sh).onchange = e => { const f = e.target.files && e.target.files[0]; if (f) importBackup(f); };
+    $("#s_save", sh).onclick = () => { settings.email = $("#s_email", sh).value.trim(); settings.phone = $("#s_phone", sh).value.trim(); persist(); closeModal(); toast("Saved"); };
+  });
+}
+
+/* ---------- tabs ---------- */
+function renderTabs() {
+  $("#tabs").innerHTML = TABS.map(([k, l]) => '<button data-act="tab" data-k="' + k + '" aria-current="' + (tab === k) + '">' + ICONS[k] + '<span>' + l + '</span></button>').join("");
+}
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (TABS.some(t => t[0] === h) && h !== tab) { tab = h; renderTabs(); render(); } });
+
+/* ---------- derived ---------- */
+function rentStatus(u) {
+  const m = monthStr(); const rec = S.rent.find(r => r.unitId === u.id && r.month === m);
+  const due = num(u.rent); const paid = rec ? num(rec.paid) : 0;
+  const day = Math.min(Math.max(parseInt(u.dueDay) || 1, 1), 28);
+  const dueDate = m + "-" + pad(day);
+  if (due <= 0) return {cls:"", text:"Set the rent amount", owed:0, dueDate};
+  if (paid >= due) return {cls:"good", text:"Paid for " + fmtMonth(m).split(" ")[0], owed:0, dueDate};
+  const owed = due - paid;
+  if (todayStr() > dueDate) return {cls:"bad", text:"Late · owes " + money(owed), owed, dueDate, late:true};
+  return {cls: paid > 0 ? "warn" : "acc", text:(paid > 0 ? "Part paid · " + money(owed) + " left · " : "Due ") + fmtDate(dueDate), owed, dueDate};
+}
+function jobBalance(j) { return Math.max(num(j.quote) + num(j.extras) - num(j.paid), 0); }
+const openJob = j => !["paid","lost"].includes(j.status);
+
+/* ---------- render ---------- */
+function render() {
+  const m = $("#main");
+  let html = "";
+  if (mode === "nostore") html += '<div class="banner">This browser is blocking storage, so nothing will be kept. Open the app from your home screen icon in Safari, not in private browsing.</div>';
+  else if (hasData() && (!settings.lastBackup || Date.now() - settings.lastBackup > 14 * 864e5)) html += '<div class="banner">Your only copy is on this phone. <button class="btn small" data-act="settings">Make a backup</button></div>';
+  html += ({today:viewToday, people:viewPeople, jobs:viewJobs, rent:viewRent, templates:viewTemplates}[tab])();
+  m.innerHTML = html;
+}
+
+function fuCard(f) {
+  const di = dueInfo(f.due, f.status);
+  const stripe = f.status === "me" ? (di && di.cls === "bad" ? "stripe-bad" : "stripe-warn") : f.status === "them" ? "stripe-acc" : f.status === "scheduled" ? "stripe-good" : "";
+  const c = byId("contacts", f.contactId);
+  return '<div class="card ' + stripe + '">' +
+    '<div class="t">' + esc(contactName(f.contactId, f.who)) +
+      (c ? ' <span class="pill">' + esc(lab(TYPES, c.type)) + '</span>' : "") +
+      (di ? ' <span class="pill ' + di.cls + '">' + esc(di.text) + '</span>' : "") + '</div>' +
+    '<div class="s">' + esc(f.need || "") + (f.next ? '<br><b>Next:</b> ' + esc(f.next) : "") + '</div>' +
+    '<div class="acts">' +
+      (f.status !== "done" ? '<button class="btn small primary" data-act="reply" data-id="' + f.id + '">Reply</button>' : "") +
+      (f.status !== "done" ? '<button class="btn small" data-act="fu-done" data-id="' + f.id + '">Mark done</button>' : "") +
+      '<button class="btn small ghost" data-act="fu-edit" data-id="' + f.id + '">Edit</button>' +
+    '</div></div>';
+}
+
+function viewToday() {
+  const open = S.followups.filter(f => f.status !== "done");
+  const byDue = (a, b) => (a.due || "9999").localeCompare(b.due || "9999");
+  const mine = open.filter(f => f.status === "me").sort(byDue);
+  const theirs = open.filter(f => f.status === "them").sort(byDue);
+  const sched = open.filter(f => f.status === "scheduled").sort(byDue);
+  const overdue = open.filter(f => f.due && f.due < todayStr()).length;
+  const rentOwed = S.units.reduce((s, u) => s + (rentStatus(u).late ? rentStatus(u).owed : 0), 0);
+  const owedJobs = S.jobs.filter(j => ["active","unpaid"].includes(j.status) && jobBalance(j) > 0);
+  const jobOwed = owedJobs.reduce((s, j) => s + jobBalance(j), 0);
+  let h = '<div class="hero-act">' +
+    '<button class="btn primary" data-act="inbox">' + (sample ? "Paste a message" : "Log a message") + '</button>' +
+    '<button class="btn" data-act="compose">Send a message</button></div>';
+  h += '<div class="tiles">' +
+    tile(mine.length, "Waiting on you", mine.length ? "warn" : "good") +
+    tile(overdue, "Overdue", overdue ? "bad" : "good") +
+    tile(money(rentOwed), "Late rent", rentOwed ? "bad" : "good") +
+    tile(money(jobOwed), "Clients owe you", jobOwed ? "acc" : "good") + '</div>';
+  const nothing = !S.contacts.length && !S.followups.length && !S.jobs.length && !S.units.length;
+  if (nothing) {
+    h += '<div class="empty"><b style="color:var(--ink)">Get set up in 3 steps</b>' +
+      '<div>1. Add your rental unit and tenant.</div><div>2. Add the clients you\'re working with now.</div>' +
+      '<div>3. When a client or tenant messages you, tap <b>Log a message</b> so it lands in <b>Waiting on you</b> until you reply.</div>' +
+      '<div class="row"><button class="btn small primary" data-act="unit-new">Add your unit</button><button class="btn small" data-act="contact-new">Add a client</button></div></div>';
+  }
+  h += section("Waiting on you", mine, mine.length ? mine.map(fuCard).join("") : '<div class="empty">Nobody is waiting on you. Nice.</div>');
+  S.units.forEach(u => { const r = rentStatus(u); if (r.late) h += '<div class="card stripe-bad"><div class="t">Rent late · ' + esc(u.name) + '</div><div class="s">' + esc(contactName(u.tenantId, "No tenant")) + ' owes ' + money(r.owed) + ' (due ' + fmtDate(r.dueDate) + ')</div><div class="acts"><button class="btn small primary" data-act="rent-remind" data-id="' + u.id + '">Send reminder</button><button class="btn small" data-act="rent-pay" data-id="' + u.id + '">Record payment</button></div></div>'; });
+  if (sched.length) h += section("Scheduled", sched, sched.map(fuCard).join(""));
+  if (theirs.length) h += section("Waiting on them", theirs, theirs.map(fuCard).join(""));
+  if (owedJobs.length) h += section("Money owed on jobs", owedJobs, owedJobs.map(jobCard).join(""));
+  return h;
+}
+const tile = (v, l, c) => '<div class="tile ' + c + '"><span class="v">' + esc(v) + '</span><span class="l">' + esc(l) + '</span></div>';
+const section = (title, arr, body, extra = "") => '<div class="section"><h2>' + esc(title) + (arr ? ' <span class="count">' + arr.length + '</span>' : "") + '<span class="spacer"></span>' + extra + '</h2><div class="list">' + body + '</div></div>';
+
+function viewPeople() {
+  let list = S.contacts.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  if (peopleFilter !== "all") list = list.filter(c => c.type === peopleFilter);
+  if (peopleQuery) { const q = peopleQuery.toLowerCase(); list = list.filter(c => [c.name, c.phone, c.ref, c.notes].join(" ").toLowerCase().includes(q)); }
+  let h = '<div class="row"><input class="search" id="pq" type="search" placeholder="Search people" value="' + esc(peopleQuery) + '" aria-label="Search people"></div>';
+  h += '<div class="chips">' + [["all","All"]].concat(TYPES).map(([k, l]) => '<button data-act="pfilter" data-k="' + k + '" aria-pressed="' + (peopleFilter === k) + '">' + l + '</button>').join("") + '</div>';
+  const body = list.length ? list.map(c => {
+    const open = S.followups.filter(f => f.contactId === c.id && f.status === "me").length;
+    return '<div class="card click" tabindex="0" data-act="contact-view" data-id="' + c.id + '"><div class="t">' + esc(c.name) + ' <span class="pill">' + esc(lab(TYPES, c.type)) + '</span>' + (open ? ' <span class="pill warn">' + open + ' waiting on you</span>' : "") + '</div><div class="s">' + esc([c.phone, lab(CHANNELS, c.channel), c.ref].filter(Boolean).join(" · ")) + '</div></div>';
+  }).join("") : '<div class="empty">No one here yet.<button class="btn small primary" data-act="contact-new">Add a person</button></div>';
+  h += section("People", list, body, '<button class="btn small primary" data-act="contact-new">+ Add</button>');
+  return h;
+}
+
+function jobCard(j) {
+  const st = j.status || "lead";
+  const cls = {lead:"", quoted:"warn", booked:"acc", active:"acc", unpaid:"bad", paid:"good", lost:""}[st];
+  const bal = jobBalance(j);
+  return '<div class="card click ' + (st === "unpaid" ? "stripe-bad" : st === "active" ? "stripe-acc" : "") + '" tabindex="0" data-act="job-edit" data-id="' + j.id + '">' +
+    '<div class="t">' + esc(j.title || "Untitled job") + ' <span class="pill ' + cls + '">' + esc(lab(JSTATUS, st)) + '</span></div>' +
+    '<div class="s">' + esc(contactName(j.contactId, "No client")) + (j.start ? ' · starts ' + fmtDate(j.start) : "") + (j.finish ? ' · finish ' + fmtDate(j.finish) : "") + '</div>' +
+    (num(j.quote) ? '<div class="s">Quote <span class="money">' + money(num(j.quote) + num(j.extras)) + '</span> · paid <span class="money">' + money(j.paid) + '</span>' + (bal ? ' · <b style="color:var(--bad)">owes <span class="money">' + money(bal) + '</span></b>' : "") + '</div>' : "") +
+    '</div>';
+}
+function viewJobs() {
+  const list = S.jobs.filter(j => jobFilter === "open" ? openJob(j) : !openJob(j)).sort((a, b) => (a.start || "9999").localeCompare(b.start || "9999"));
+  const pipeline = S.jobs.filter(openJob);
+  const quoted = pipeline.filter(j => j.status === "quoted").reduce((s, j) => s + num(j.quote), 0);
+  const owed = pipeline.reduce((s, j) => s + (["active","unpaid"].includes(j.status) ? jobBalance(j) : 0), 0);
+  let h = '<div class="tiles">' + tile(pipeline.length, "Open jobs", "acc") + tile(money(quoted), "Quotes waiting", quoted ? "warn" : "good") + tile(money(owed), "Owed to you", owed ? "bad" : "good") + tile(S.jobs.filter(j => j.status === "paid").length, "Paid jobs", "good") + '</div>';
+  h += '<div class="chips"><button data-act="jfilter" data-k="open" aria-pressed="' + (jobFilter === "open") + '">Open</button><button data-act="jfilter" data-k="closed" aria-pressed="' + (jobFilter === "closed") + '">Paid &amp; lost</button></div>';
+  h += section("Jobs", list, list.length ? list.map(jobCard).join("") : '<div class="empty">No ' + (jobFilter === "open" ? "open" : "closed") + ' jobs.<button class="btn small primary" data-act="job-new">Add a job</button></div>', '<button class="btn small primary" data-act="job-new">+ Add</button>');
+  return h;
+}
+
+function viewRent() {
+  let h = "";
+  const cards = S.units.map(u => {
+    const r = rentStatus(u);
+    const leaseSoon = u.leaseEnd && u.leaseEnd >= todayStr() && u.leaseEnd <= addDays(60);
+    return '<div class="card ' + (r.cls === "bad" ? "stripe-bad" : r.cls === "good" ? "stripe-good" : "stripe-acc") + '">' +
+      '<div class="t">' + esc(u.name) + ' <span class="pill ' + r.cls + '">' + esc(r.text) + '</span>' + (leaseSoon ? ' <span class="pill warn">Lease ends ' + fmtDate(u.leaseEnd) + '</span>' : "") + '</div>' +
+      '<div class="s">' + esc(contactName(u.tenantId, "No tenant yet")) + ' · <span class="money">' + money(u.rent) + '</span>/month · due on day ' + esc(u.dueDay || 1) + '</div>' +
+      '<div class="acts"><button class="btn small primary" data-act="rent-pay" data-id="' + u.id + '">Record payment</button><button class="btn small" data-act="rent-remind" data-id="' + u.id + '">Message tenant</button><button class="btn small ghost" data-act="unit-edit" data-id="' + u.id + '">Edit unit</button></div></div>';
+  }).join("");
+  h += section("Units", S.units, cards || '<div class="empty">Add your rental unit to track rent and lease dates.<button class="btn small primary" data-act="unit-new">Add a unit</button></div>', '<button class="btn small primary" data-act="unit-new">+ Unit</button>');
+  const log = S.rent.slice().sort((a, b) => (b.month || "").localeCompare(a.month || ""));
+  const rows = log.map(r => { const u = byId("units", r.unitId); const bal = num(r.due) - num(r.paid);
+    return '<tr><td>' + esc(fmtMonth(r.month)) + '</td><td>' + esc(u ? u.name : "—") + '</td><td class="r money">' + money(r.due) + '</td><td class="r money">' + money(r.paid) + '</td><td class="r money" style="color:' + (bal > 0 ? "var(--bad)" : "var(--good)") + '">' + money(Math.max(bal, 0)) + '</td><td>' + esc(r.datePaid ? fmtDate(r.datePaid) : "") + '</td><td><button class="btn small ghost" data-act="rent-edit" data-id="' + r.id + '">Edit</button></td></tr>'; }).join("");
+  h += section("Rent log", log, log.length ? '<div class="tablewrap"><table class="log"><thead><tr><th>Month</th><th>Unit</th><th class="r">Due</th><th class="r">Paid</th><th class="r">Owing</th><th>Paid on</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="empty">Payments you record show up here.</div>');
+  return h;
+}
+
+function viewTemplates() {
+  const list = S.templates.slice().sort((a, b) => (num(a.order) - num(b.order)) || (a.title || "").localeCompare(b.title || ""));
+  const group = (k, title) => { const g = list.filter(t => (t.for || "any") === k); return g.length ? section(title, g, g.map(t => '<div class="card"><div class="t">' + esc(t.title) + '</div><div class="s">' + esc((t.body || "").slice(0, 140)) + ((t.body || "").length > 140 ? "…" : "") + '</div><div class="acts"><button class="btn small primary" data-act="tpl-use" data-id="' + t.id + '">Use</button><button class="btn small ghost" data-act="tpl-edit" data-id="' + t.id + '">Edit</button></div></div>').join("")) : ""; };
+  let h = '<div class="row"><span class="note spacer">Ready-made messages. Tap <b>Use</b>, pick who it\'s for, and send it on WhatsApp, Messages or Messenger.</span><button class="btn small primary" data-act="tpl-new">+ New</button></div>';
+  h += group("client", "For clients") + group("tenant", "For tenants") + group("any", "Other");
+  if (!list.length) h += '<div class="empty">No saved messages yet.<button class="btn small primary" data-act="tpl-new">Write one</button></div>';
+  return h;
+}
+
+/* ---------- modal + forms ---------- */
+function openModal(title, body, onMount) {
+  $("#sheet").innerHTML = '<div class="sheet-h"><h3>' + esc(title) + '</h3><button class="btn small ghost" data-act="close" aria-label="Close">Close</button></div>' + body;
+  $("#modal").classList.add("open");
+  if (onMount) onMount($("#sheet"));
+  const f = $("#sheet input, #sheet textarea, #sheet select"); if (f && window.innerWidth > 700) f.focus();
+}
+function closeModal() { $("#modal").classList.remove("open"); $("#sheet").innerHTML = ""; }
+$("#modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#modal").classList.contains("open")) closeModal(); });
+
+function fieldHTML(f, v) {
+  const id = "f_" + f.k; v = v ?? f.def ?? "";
+  let input;
+  if (f.type === "select") input = '<select id="' + id + '">' + f.options.map(([k, l]) => '<option value="' + esc(k) + '"' + (String(v) === String(k) ? " selected" : "") + '>' + esc(l) + '</option>').join("") + '</select>';
+  else if (f.type === "textarea") input = '<textarea id="' + id + '" placeholder="' + esc(f.ph || "") + '">' + esc(v) + '</textarea>';
+  else input = '<input id="' + id + '" type="' + (f.type === "money" ? "text" : f.type || "text") + '"' + (f.type === "money" ? ' inputmode="decimal"' : "") + ' value="' + esc(v) + '" placeholder="' + esc(f.ph || "") + '">';
+  return '<div class="field"><label for="' + id + '">' + esc(f.label) + '</label>' + input + (f.hint ? '<span class="note">' + esc(f.hint) + '</span>' : "") + '</div>';
+}
+function formHTML(fields, rec) {
+  let out = "", pair = [];
+  fields.forEach(f => { const h = fieldHTML(f, rec[f.k]); if (f.half) { pair.push(h); if (pair.length === 2) { out += '<div class="grid2">' + pair.join("") + '</div>'; pair = []; } } else { if (pair.length) { out += '<div class="grid2">' + pair.join("") + '</div>'; pair = []; } out += h; } });
+  if (pair.length) out += '<div class="grid2">' + pair.join("") + '</div>';
+  return out;
+}
+function readForm(fields) { const o = {}; fields.forEach(f => { const el = $("#f_" + f.k); let v = el ? el.value.trim() : ""; if (f.type === "money" || f.type === "number") v = v === "" ? "" : num(v); o[f.k] = v; }); return o; }
+function editForm({title, col, fields, rec = {}, onSaved, extraTop = "", deletable = true, validate}) {
+  openModal(title, extraTop + formHTML(fields, rec) +
+    '<div class="row">' + (rec.id && deletable ? '<button class="btn danger" data-act="del-ask">Delete</button>' : "") + '<span class="spacer"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" id="saveBtn">Save</button></div>', sh => {
+      $("#saveBtn", sh).onclick = async () => {
+        const data = Object.assign({}, rec, readForm(fields));
+        if (validate) { const msg = validate(data); if (msg) { toast(msg); return; } }
+        $("#saveBtn", sh).disabled = true;
+        try { const id = await save(col, data); closeModal(); toast("Saved"); if (onSaved) onSaved(id, data); } catch (e) { $("#saveBtn", sh).disabled = false; }
+      };
+      const del = $('[data-act="del-ask"]', sh);
+      if (del) del.onclick = () => {
+        del.outerHTML = '<span class="note">Delete for good?</span><button class="btn danger" id="delYes">Yes, delete</button>';
+        $("#delYes", sh).onclick = async () => { await remove(col, rec.id); closeModal(); toast("Deleted"); };
+      };
+    });
+}
+const contactOptions = (blank = "— None —", filter) => [["", blank]].concat(S.contacts.filter(c => !filter || filter(c)).sort((a, b) => (a.name || "").localeCompare(b.name || "")).map(c => [c.id, c.name + " (" + lab(TYPES, c.type) + ")"]));
+
+const F_CONTACT = () => [
+  {k:"name", label:"Name", ph:"e.g. Sarah Thompson"},
+  {k:"type", label:"Type", type:"select", options:TYPES, half:true, def:"client"},
+  {k:"channel", label:"Usually messages on", type:"select", options:CHANNELS, half:true, def:"whatsapp"},
+  {k:"phone", label:"Phone", type:"tel", ph:"204 555 0123", half:true},
+  {k:"messenger", label:"Messenger username", ph:"from their m.me link", half:true, hint:"Optional. Opens their Messenger chat directly."},
+  {k:"email", label:"Email", type:"email", half:true},
+  {k:"ref", label:"Property / job", ph:"e.g. 45 Elm St basement", half:true},
+  {k:"notes", label:"Notes", type:"textarea", ph:"Gate code, preferences, anything useful"}
+];
+const F_FU = () => [
+  {k:"contactId", label:"Who", type:"select", options:contactOptions("— Not in contacts —")},
+  {k:"who", label:"Name (if not in contacts)", half:true},
+  {k:"channel", label:"Channel", type:"select", options:CHANNELS, half:true},
+  {k:"need", label:"What they need", type:"textarea", ph:"e.g. Wants a quote for a basement bathroom"},
+  {k:"next", label:"My next step", ph:"e.g. Site visit, then send quote"},
+  {k:"status", label:"Status", type:"select", options:FSTATUS, half:true, def:"me"},
+  {k:"due", label:"Due", type:"date", half:true, def:addDays(1)}
+];
+const F_JOB = () => [
+  {k:"title", label:"Job", ph:"e.g. Basement bathroom, 45 Elm St"},
+  {k:"contactId", label:"Client", type:"select", options:contactOptions("— Pick a client —")},
+  {k:"status", label:"Status", type:"select", options:JSTATUS, half:true, def:"lead"},
+  {k:"address", label:"Address", half:true},
+  {k:"quote", label:"Quote ($)", type:"money", half:true},
+  {k:"extras", label:"Approved extras ($)", type:"money", half:true},
+  {k:"paid", label:"Paid so far ($)", type:"money", half:true},
+  {k:"start", label:"Start", type:"date", half:true},
+  {k:"finish", label:"Finish", type:"date", half:true},
+  {k:"notes", label:"Notes", type:"textarea", ph:"Scope, materials, change orders"}
+];
+const F_UNIT = () => [
+  {k:"name", label:"Unit name", ph:"e.g. Main floor"},
+  {k:"tenantId", label:"Tenant", type:"select", options:contactOptions("— No tenant yet —", c => c.type === "tenant"), hint:"Add the tenant under People first (type: Tenant)."},
+  {k:"rent", label:"Monthly rent ($)", type:"money", half:true},
+  {k:"dueDay", label:"Rent due on day", type:"number", half:true, def:1},
+  {k:"leaseStart", label:"Lease start", type:"date", half:true},
+  {k:"leaseEnd", label:"Lease end", type:"date", half:true},
+  {k:"deposit", label:"Deposit held ($)", type:"money", half:true},
+  {k:"notes", label:"Notes", type:"textarea"}
+];
+const F_TPL = () => [
+  {k:"title", label:"Name", ph:"e.g. Quote follow-up"},
+  {k:"for", label:"For", type:"select", options:[["client","Clients"],["tenant","Tenants"],["any","Anyone"]], half:true, def:"client"},
+  {k:"order", label:"Sort order", type:"number", half:true, def:50},
+  {k:"body", label:"Message", type:"textarea", ph:"Hi [name], …", hint:"[name] fills in automatically. Fill the other [brackets] before sending."}
+];
+
+/* ---------- compose ---------- */
+function fillTemplate(body, c) {
+  let t = body || "";
+  if (c) {
+    t = t.replace(/\[name\]/gi, firstName(c.name));
+    const unit = S.units.find(u => u.tenantId === c.id);
+    if (unit && num(unit.rent)) t = t.replace(/\[amount\]/gi, money(unit.rent).replace(/^\$/, "").replace(/\.00$/, ""));
+    if (c.ref) t = t.replace(/\[project\]/gi, c.ref);
+  }
+  if (settings.email) t = t.replace(/\[email\]/gi, settings.email);
+  if (settings.phone) t = t.replace(/\[phone\]/gi, settings.phone);
+  return t;
+}
+function sendLinks(c, text) {
+  const enc = encodeURIComponent(text || "");
+  const d = c ? phoneDigits(c.phone) : "";
+  return {
+    wa: d ? "https://wa.me/" + d + "?text=" + enc : "https://wa.me/?text=" + enc,
+    sms: "sms:" + (d ? "+" + d : "") + "?&body=" + enc,
+    fb: c && c.messenger ? "https://m.me/" + encodeURIComponent(c.messenger.replace(/^@/, "")) : "https://www.messenger.com/"
+  };
+}
+function openCompose({contactId = "", templateId = "", text = "", followupId = ""} = {}) {
+  const tpls = S.templates.slice().sort((a, b) => num(a.order) - num(b.order));
+  const fu = followupId ? byId("followups", followupId) : null;
+  const body =
+    '<div class="field"><label for="c_to">To</label><select id="c_to">' + contactOptions("— Pick a person —").map(([k, l]) => '<option value="' + esc(k) + '"' + (k === contactId ? " selected" : "") + '>' + esc(l) + '</option>').join("") + '</select><span class="note" id="c_info"></span></div>' +
+    (tpls.length ? '<div class="field"><label for="c_tpl">Start from a saved message</label><select id="c_tpl"><option value="">— Write my own —</option>' + tpls.map(t => '<option value="' + t.id + '"' + (t.id === templateId ? " selected" : "") + '>' + esc(t.title) + '</option>').join("") + '</select></div>' : "") +
+    (fu ? '<div class="note">Replying about: ' + esc(fu.need || "") + '</div>' : "") +
+    '<div class="field"><label for="c_msg">Message</label><textarea id="c_msg" style="min-height:150px">' + esc(text) + '</textarea></div>' +
+    (sample ? '<div class="ai-box"><label class="note" for="c_ai"><b>Write it with AI.</b> Say what you want to tell them, in any words.</label><div class="row"><input id="c_ai" class="search" style="flex:1" placeholder="e.g. tell her the tiles arrive Thursday, start Friday 8am"><button class="btn small primary" id="c_aibtn">Write</button></div></div>' : "") +
+    '<div class="row"><label class="check"><input type="checkbox" id="c_track"' + (fu || contactId ? " checked" : "") + '> Remind me if they don\'t reply by</label><input type="date" id="c_tdate" value="' + addDays(2) + '" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)"></div>' +
+    '<div class="row"><a class="btn wa" id="s_wa" target="_blank" rel="noopener">WhatsApp</a><a class="btn" id="s_sms">Messages</a><a class="btn" id="s_fb" target="_blank" rel="noopener">Messenger</a><button class="btn" id="s_copy">Copy</button></div>' +
+    '<div class="note">Each button opens that app with your message ready. For Messenger, the text is copied first, so just paste it in.</div>';
+  openModal("Send a message", body, sh => {
+    const to = $("#c_to", sh), msg = $("#c_msg", sh), tpl = $("#c_tpl", sh);
+    const cur = () => byId("contacts", to.value);
+    const refresh = () => {
+      const c = cur(), L = sendLinks(c, msg.value);
+      $("#s_wa", sh).href = L.wa; $("#s_sms", sh).href = L.sms; $("#s_fb", sh).href = L.fb;
+      $("#c_info", sh).textContent = c ? [c.phone ? "Phone " + c.phone : "No phone saved", "usually on " + lab(CHANNELS, c.channel)].join(" · ") : "";
+    };
+    const applyTpl = () => { const t = tpl && byId("templates", tpl.value); if (t) msg.value = fillTemplate(t.body, cur()); refresh(); };
+    if (tpl) tpl.onchange = applyTpl;
+    to.onchange = () => { if (tpl && tpl.value) applyTpl(); else refresh(); };
+    msg.oninput = refresh;
+    if (templateId && !text) applyTpl(); else refresh();
+    const after = async () => {
+      if (!msg.value.trim()) return;
+      const c = cur();
+      if ($("#c_track", sh).checked) {
+        const due = $("#c_tdate", sh).value || addDays(2);
+        if (fu) await save("followups", Object.assign({}, fu, {status:"them", due, next:"Waiting for their reply"}));
+        else await save("followups", {contactId: c ? c.id : "", who: c ? c.name : "", need: "Sent: " + msg.value.trim().slice(0, 90) + (msg.value.trim().length > 90 ? "…" : ""), next:"Waiting for their reply", status:"them", due, channel: c ? c.channel : ""});
+      } else if (fu) await save("followups", Object.assign({}, fu, {status:"done"}));
+    };
+    ["s_wa","s_sms"].forEach(id => $("#" + id, sh).addEventListener("click", e => { if (!msg.value.trim()) { e.preventDefault(); toast("Write a message first."); return; } copyText(msg.value); after(); setTimeout(closeModal, 300); }));
+    $("#s_fb", sh).addEventListener("click", async e => { if (!msg.value.trim()) { e.preventDefault(); toast("Write a message first."); return; } copyText(msg.value).then(ok => toast(ok ? "Message copied. Paste it in Messenger." : "Copy the message, then paste it in Messenger.")); after(); setTimeout(closeModal, 300); });
+    $("#s_copy", sh).onclick = async () => { const ok = await copyText(msg.value); toast(ok ? "Copied" : "Select the text and copy it."); };
+    const aib = $("#c_aibtn", sh);
+    if (aib) aib.onclick = async () => {
+      const ask = $("#c_ai", sh).value.trim(); if (!ask && !msg.value.trim()) { toast("Say what the message should say."); return; }
+      const c = cur(); aib.disabled = true; aib.innerHTML = '<span class="spin"></span>';
+      const ctx = contactContext(c);
+      const prompt = "You write short text messages for Shehryar Humayun, who runs ResiTech Constructions (home renovations in Winnipeg, Manitoba) and rents out a unit. Write ONE message he can send by WhatsApp or text.\n" +
+        "Style: friendly, plain, confident, brief (2-5 sentences), Canadian spelling, no emojis unless the draft has them, no subject line, no sign-off unless it is a first message to a new client (then end with '– Shehryar, ResiTech Constructions'). Never invent prices, dates or facts that are not given; use [brackets] for anything missing.\n" +
+        "Today is " + new Date().toDateString() + ".\nRecipient: " + ctx + "\n" + (fu ? "This is a reply about: " + fu.need + "\n" : "") +
+        (msg.value.trim() ? "Current draft (improve or follow it):\n" + msg.value.trim() + "\n" : "") +
+        (ask ? "What he wants to say: " + ask + "\n" : "") + "Return only the message text.";
+      try {
+        await sample(prompt, {modelTier:"quick", cache:false, onText: ({text}) => { msg.value = text; }}).then(r => { msg.value = (r.text || msg.value).trim(); });
+      } catch (e) { if (e && e.code === "not_granted") { sample = null; } toast(e && e.code === "rate_limited" ? "AI is busy. Try again in a minute." : "Couldn't write it this time. Try again."); }
+      aib.disabled = false; aib.textContent = "Write"; refresh();
+    };
+  });
+}
+function contactContext(c) {
+  if (!c) return "unknown person";
+  const bits = [c.name + " (" + lab(TYPES, c.type) + ")"];
+  if (c.ref) bits.push("property/job: " + c.ref);
+  const unit = S.units.find(u => u.tenantId === c.id);
+  if (unit) { const r = rentStatus(unit); bits.push("tenant of " + unit.name + ", rent " + money(unit.rent) + " due day " + (unit.dueDay || 1) + ", this month: " + r.text); }
+  const jobs = S.jobs.filter(j => j.contactId === c.id && openJob(j));
+  jobs.forEach(j => bits.push("job '" + j.title + "' status " + lab(JSTATUS, j.status) + (num(j.quote) ? ", quote " + money(j.quote) + ", paid " + money(j.paid) : "") + (j.start ? ", start " + j.start : "")));
+  return bits.join("; ");
+}
+
+/* ---------- inbox: paste a message ---------- */
+function openInbox() {
+  let img = null;
+  const body =
+    (sample ? '<div class="note">Copy the message from WhatsApp, Messages or Messenger and paste it here' + (aiImages ? ", or add a screenshot of the chat" : "") + '. I\'ll work out who it is and what they need, and draft a reply.</div>' : '<div class="note">Write down what they asked for so it doesn\'t slip.</div>') +
+    '<div class="field"><label for="i_text">Their message</label><textarea id="i_text" placeholder="Paste the message here"></textarea></div>' +
+    (sample && aiImages ? '<div class="field"><label for="i_img">Or a screenshot</label><input type="file" id="i_img" accept="image/*"></div>' : "") +
+    '<div class="row">' + (sample ? '<button class="btn primary" id="i_go">Read it and draft a reply</button>' : "") + '<button class="btn" id="i_manual">Log it myself</button></div><div id="i_out"></div>';
+  openModal(sample ? "Paste a message" : "Log a message", body, sh => {
+    const fi = $("#i_img", sh); if (fi) fi.onchange = () => { img = fi.files && fi.files[0] || null; };
+    $("#i_manual", sh).onclick = () => showResult(sh, {need: $("#i_text", sh).value.trim()});
+    const go = $("#i_go", sh);
+    if (go) go.onclick = async () => {
+      const text = $("#i_text", sh).value.trim();
+      if (!text && !img) { toast("Paste a message or add a screenshot."); return; }
+      go.disabled = true; go.innerHTML = '<span class="spin"></span> Reading…';
+      const people = S.contacts.map(c => c.name + " [" + lab(TYPES, c.type) + (c.ref ? ", " + c.ref : "") + "]").join("; ") || "none yet";
+      const prompt = "You are the assistant for Shehryar Humayun, who runs ResiTech Constructions (home renovations, Winnipeg, Manitoba) and rents out a unit. He received the message below" + (img ? " (see the screenshot of the chat; his own messages are on the right)" : "") + " from a client, tenant, supplier or someone else.\n" +
+        "Today is " + todayStr() + " (" + new Date().toLocaleDateString("en-CA", {weekday:"long"}) + ").\nHis saved contacts: " + people + "\n\n" +
+        (text ? "MESSAGE:\n" + text + "\n\n" : "") +
+        "Return a JSON object with exactly these keys:\n" +
+        "contactName: the sender's name if you can tell (match a saved contact's exact name when it is clearly them), else \"\".\n" +
+        "type: one of client, tenant, supplier, trade, other.\n" +
+        "channel: one of whatsapp, sms, messenger, other (guess from the screenshot style, else \"other\").\n" +
+        "need: one short line, what they want from him.\n" +
+        "urgent: true only for emergencies (water leak, no heat, no power, safety) or same-day deadlines.\n" +
+        "due: YYYY-MM-DD by when he should act (today if urgent, else a sensible date), or \"\".\n" +
+        "next: his next step in a few words.\n" +
+        "reply: a short, friendly reply he can send as-is (2-4 sentences, plain text, no emojis, Canadian spelling). Never invent prices, dates or commitments; put [brackets] where he must fill something in.";
+      try {
+        const opts = {modelTier:"default", cache:false}; if (img) opts.images = [img];
+        const r = await sample.json(prompt, opts);
+        showResult(sh, r && typeof r === "object" ? r : {});
+      } catch (e) {
+        if (e && e.code === "not_granted") sample = null;
+        toast(e && e.code === "rate_limited" ? "AI is busy. Try again in a minute." : "Couldn't read that one. You can log it yourself.");
+        showResult(sh, {need: text});
+      }
+      go.disabled = false; go.textContent = "Read it again";
+    };
+  });
+}
+function showResult(sh, r) {
+  const name = String(r.contactName || "").trim();
+  const match = name ? S.contacts.find(c => (c.name || "").toLowerCase() === name.toLowerCase()) || S.contacts.find(c => firstName(c.name).toLowerCase() === firstName(name).toLowerCase()) : null;
+  const ch = CHANNELS.some(c => c[0] === r.channel) ? r.channel : "whatsapp";
+  const ty = TYPES.some(t => t[0] === r.type) ? r.type : "client";
+  const due = /^\d{4}-\d{2}-\d{2}$/.test(r.due || "") ? r.due : addDays(1);
+  $("#i_out", sh).innerHTML =
+    '<div class="section" style="margin-top:6px">' + (r.urgent ? '<div class="banner" style="background:var(--bad-soft);color:var(--bad)"><b>Urgent.</b> Deal with this today.</div>' : "") +
+    '<div class="field"><label for="r_who">Who</label><select id="r_who">' + contactOptions("+ New person").map(([k, l]) => '<option value="' + esc(k) + '"' + (match && k === match.id ? " selected" : "") + '>' + esc(l) + '</option>').join("") + '</select></div>' +
+    '<div class="grid2" id="r_newbox"><div class="field"><label for="r_name">Name</label><input id="r_name" value="' + esc(match ? "" : name) + '"></div><div class="field"><label for="r_type">Type</label><select id="r_type">' + TYPES.map(([k, l]) => '<option value="' + k + '"' + (k === ty ? " selected" : "") + '>' + l + '</option>').join("") + '</select></div><div class="field"><label for="r_phone">Phone</label><input id="r_phone" type="tel" placeholder="Optional"></div><div class="field"><label for="r_ch">Channel</label><select id="r_ch">' + CHANNELS.map(([k, l]) => '<option value="' + k + '"' + (k === ch ? " selected" : "") + '>' + l + '</option>').join("") + '</select></div></div>' +
+    '<div class="field"><label for="r_need">What they need</label><input id="r_need" value="' + esc(r.need || "") + '"></div>' +
+    '<div class="grid2"><div class="field"><label for="r_next">My next step</label><input id="r_next" value="' + esc(r.next || "") + '"></div><div class="field"><label for="r_due">Due</label><input id="r_due" type="date" value="' + due + '"></div></div>' +
+    (r.reply ? '<div class="field"><label for="r_reply">Draft reply</label><textarea id="r_reply">' + esc(r.reply) + '</textarea></div>' : "") +
+    '<div class="row"><span class="spacer"></span><button class="btn" id="r_save">Save for later</button>' + '<button class="btn primary" id="r_send">' + (r.reply ? "Save and reply" : "Save and reply now") + '</button></div></div>';
+  const who = $("#r_who", sh), box = $("#r_newbox", sh);
+  const sync = () => { box.style.display = who.value ? "none" : ""; }; who.onchange = sync; sync();
+  const commit = async () => {
+    let cid = who.value;
+    if (!cid) {
+      const nm = $("#r_name", sh).value.trim();
+      if (!nm) { toast("Add their name."); return null; }
+      cid = await save("contacts", {name: nm, type: $("#r_type", sh).value, phone: $("#r_phone", sh).value.trim(), channel: $("#r_ch", sh).value});
+    }
+    const c = byId("contacts", cid) || {};
+    const fid = await save("followups", {contactId: cid, who: c.name || $("#r_name", sh).value.trim(), need: $("#r_need", sh).value.trim(), next: $("#r_next", sh).value.trim(), due: $("#r_due", sh).value, status:"me", channel: c.channel || $("#r_ch", sh).value});
+    return {cid, fid};
+  };
+  $("#r_save", sh).onclick = async () => { const ok = await commit(); if (ok) { closeModal(); toast("Added to Waiting on you"); } };
+  $("#r_send", sh).onclick = async () => { const rp = $("#r_reply", sh); const text = rp ? rp.value : ""; const ok = await commit(); if (ok) { await new Promise(res => setTimeout(res, 300)); openCompose({contactId: ok.cid, followupId: ok.fid, text}); } };
+  $("#r_need", sh).scrollIntoView({block:"center", behavior:"smooth"});
+}
+
+/* ---------- contact view ---------- */
+function viewContact(id) {
+  const c = byId("contacts", id); if (!c) return;
+  const L = sendLinks(c, "");
+  const fus = S.followups.filter(f => f.contactId === id && f.status !== "done");
+  const jobs = S.jobs.filter(j => j.contactId === id);
+  const unit = S.units.find(u => u.tenantId === id);
+  const body =
+    '<dl class="kv">' + [["Type", lab(TYPES, c.type)], ["Phone", c.phone], ["Usually on", lab(CHANNELS, c.channel)], ["Messenger", c.messenger], ["Email", c.email], ["Property / job", c.ref], ["Notes", c.notes]].filter(x => x[1]).map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join("") + '</dl>' +
+    '<div class="row"><button class="btn primary" data-act="compose-to" data-id="' + id + '">Write a message</button>' + (c.phone ? '<a class="btn wa" href="' + L.wa.replace(/\?text=$/, "") + '" target="_blank" rel="noopener">WhatsApp</a><a class="btn" href="tel:+' + phoneDigits(c.phone) + '">Call</a>' : "") + '<button class="btn ghost" data-act="contact-edit" data-id="' + id + '">Edit</button></div>' +
+    (unit ? '<div class="card stripe-acc"><div class="t">Tenant · ' + esc(unit.name) + ' <span class="pill ' + rentStatus(unit).cls + '">' + esc(rentStatus(unit).text) + '</span></div><div class="s"><span class="money">' + money(unit.rent) + '</span>/month' + (unit.leaseEnd ? ' · lease ends ' + fmtDate(unit.leaseEnd) : "") + '</div></div>' : "") +
+    (fus.length ? section("Open", fus, fus.map(fuCard).join("")) : "") +
+    (jobs.length ? section("Jobs", jobs, jobs.map(jobCard).join("")) : "") +
+    '<div class="row"><button class="btn small" data-act="fu-new" data-id="' + id + '">+ Follow-up</button>' + (c.type === "client" ? '<button class="btn small" data-act="job-new" data-id="' + id + '">+ Job</button>' : "") + '</div>';
+  openModal(c.name, body);
+}
+
+/* ---------- actions ---------- */
+function recordPayment(unitId, recId) {
+  const u = byId("units", unitId); const existing = recId ? byId("rent", recId) : null;
+  const m = existing ? existing.month : monthStr();
+  const rec = existing || S.rent.find(r => r.unitId === unitId && r.month === m);
+  const remaining = Math.max(num(u && u.rent) - num(rec && rec.paid), 0);
+  const fields = [
+    {k:"month", label:"For month", type:"month", half:true, def:m},
+    {k:"amount", label: existing ? "Total paid ($)" : "Amount received ($)", type:"money", half:true, def: existing ? num(existing.paid) : remaining},
+    {k:"datePaid", label:"Received on", type:"date", half:true, def: existing && existing.datePaid || todayStr()},
+    {k:"method", label:"Method", type:"select", options:METHODS, half:true, def: existing && existing.method || "etransfer"},
+    {k:"notes", label:"Notes", type:"text", def: existing && existing.notes || ""}
+  ];
+  openModal((existing ? "Edit payment · " : "Record rent · ") + (u ? u.name : ""), formHTML(fields, {}) + '<div class="row">' + (existing ? '<button class="btn danger" id="p_del">Delete</button>' : "") + '<span class="spacer"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" id="p_save">Save</button></div>', sh => {
+    $("#p_save", sh).onclick = async () => {
+      const v = readForm(fields); const month = v.month || m;
+      const prev = existing || S.rent.find(r => r.unitId === unitId && r.month === month);
+      const paid = existing ? num(v.amount) : num(prev && prev.paid) + num(v.amount);
+      await save("rent", {id: existing ? existing.id : unitId + "_" + month, created: prev && prev.created, unitId, month, due: num(prev && prev.due) || num(u && u.rent), paid, datePaid: v.datePaid, method: v.method, notes: v.notes});
+      closeModal(); toast("Payment saved");
+    };
+    const d = $("#p_del", sh); if (d) d.onclick = async () => { await remove("rent", existing.id); closeModal(); toast("Deleted"); };
+  });
+}
+
+const ACT = {
+  tab: d => { tab = d.k; history.replaceState(null, "", "#" + tab); renderTabs(); render(); window.scrollTo(0, 0); },
+  close: closeModal,
+  settings: openSettings,
+  inbox: openInbox,
+  compose: () => openCompose(),
+  "compose-to": d => openCompose({contactId: d.id}),
+  reply: d => { const f = byId("followups", d.id); openCompose({contactId: f && f.contactId, followupId: d.id}); },
+  "fu-done": async d => { const f = byId("followups", d.id); if (f) { await save("followups", Object.assign({}, f, {status:"done"})); toast("Marked done"); } },
+  "fu-edit": d => editForm({title:"Edit follow-up", col:"followups", fields:F_FU(), rec: byId("followups", d.id) || {}}),
+  "fu-new": d => editForm({title:"New follow-up", col:"followups", fields:F_FU(), rec:{contactId: d.id || "", status:"me", due:addDays(1)}}),
+  pfilter: d => { peopleFilter = d.k; render(); },
+  jfilter: d => { jobFilter = d.k; render(); },
+  "contact-new": () => editForm({title:"Add a person", col:"contacts", fields:F_CONTACT(), rec:{type:"client", channel:"whatsapp"}, validate: x => x.name ? "" : "Add a name."}),
+  "contact-edit": d => editForm({title:"Edit person", col:"contacts", fields:F_CONTACT(), rec: byId("contacts", d.id) || {}, validate: x => x.name ? "" : "Add a name."}),
+  "contact-view": d => viewContact(d.id),
+  "job-new": d => editForm({title:"New job", col:"jobs", fields:F_JOB(), rec:{contactId: d.id || "", status:"lead"}, validate: x => x.title ? "" : "Give the job a name."}),
+  "job-edit": d => editForm({title:"Edit job", col:"jobs", fields:F_JOB(), rec: byId("jobs", d.id) || {}, validate: x => x.title ? "" : "Give the job a name."}),
+  "unit-new": () => editForm({title:"Add a unit", col:"units", fields:F_UNIT(), rec:{dueDay:1}, validate: x => x.name ? "" : "Give the unit a name."}),
+  "unit-edit": d => editForm({title:"Edit unit", col:"units", fields:F_UNIT(), rec: byId("units", d.id) || {}, validate: x => x.name ? "" : "Give the unit a name."}),
+  "rent-pay": d => recordPayment(d.id),
+  "rent-edit": d => { const r = byId("rent", d.id); if (r) recordPayment(r.unitId, r.id); },
+  "rent-remind": d => { const u = byId("units", d.id); const r = u && rentStatus(u); const t = S.templates.find(x => /late/i.test(x.title || "") && r && r.late) || S.templates.find(x => /rent/i.test(x.title || "")); openCompose({contactId: u && u.tenantId, templateId: t ? t.id : ""}); },
+  "tpl-use": d => openCompose({templateId: d.id}),
+  "tpl-new": () => editForm({title:"New saved message", col:"templates", fields:F_TPL(), rec:{for:"client", order:50}, validate: x => x.title && x.body ? "" : "Add a name and the message."}),
+  "tpl-edit": d => editForm({title:"Edit saved message", col:"templates", fields:F_TPL(), rec: byId("templates", d.id) || {}, validate: x => x.title && x.body ? "" : "Add a name and the message."})
+};
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const fn = ACT[el.dataset.act]; if (!fn) return;
+  if (el.tagName !== "A") e.preventDefault();
+  fn(el.dataset);
+});
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".card.click[data-act]")) { e.preventDefault(); ACT[e.target.dataset.act](e.target.dataset); } });
+document.addEventListener("input", e => { if (e.target.id === "pq") { peopleQuery = e.target.value; const pos = e.target.selectionStart; render(); const n = $("#pq"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } } });
+
+init();
+})();
+</script>
+</body>
+</html>
