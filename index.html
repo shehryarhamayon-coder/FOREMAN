@@ -121,6 +121,7 @@ table.log td.r,table.log th.r{text-align:right}
 .check input{width:18px;height:18px}
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%}
 #toast.show{opacity:1}
+.backup-bar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;color:var(--ink)}
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:14px}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -196,7 +197,7 @@ async function copyText(text) { try { await navigator.clipboard.writeText(text);
 
 /* ---------- storage: everything stays on this phone ---------- */
 const KEY = "resitech.v1";
-let settings = {email:"", phone:"", lastBackup:0};
+let settings = {email:"", phone:"", lastBackup:0, changes:0};
 function persist() {
   try { localStorage.setItem(KEY, JSON.stringify({v:1, S, settings})); return true; }
   catch (e) { toast("Couldn't save on this phone. Storage may be full: make a backup."); return false; }
@@ -207,13 +208,20 @@ async function save(col, obj) {
   if (!rec.created) rec.created = Date.now();
   const i = S[col].findIndex(x => x.id === id);
   if (i >= 0) S[col][i] = rec; else S[col].push(rec);
-  persist(); render();
+  settings.changes = (settings.changes || 0) + 1;
+  persist(); render(); setStatus();
   return id;
 }
-async function remove(col, id) { S[col] = S[col].filter(x => x.id !== id); persist(); render(); }
+async function remove(col, id) { S[col] = S[col].filter(x => x.id !== id); settings.changes = (settings.changes || 0) + 1; persist(); render(); setStatus(); }
+/* Weekly backup: due every Sunday from 6 pm, or after 7 days, or after 25 changes. */
+function lastSundayEvening() { const d = new Date(); d.setHours(18, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); if (d > new Date()) d.setDate(d.getDate() - 7); return d.getTime(); }
+function backupDue() {
+  if (!hasData() || !(settings.changes > 0 || !settings.lastBackup)) return false;
+  if (!settings.lastBackup) return true;
+  return settings.lastBackup < lastSundayEvening() || Date.now() - settings.lastBackup > 7 * 864e5 || settings.changes >= 25;
+}
 function setStatus() {
-  const days = settings.lastBackup ? Math.floor((Date.now() - settings.lastBackup) / 864e5) : null;
-  const stale = days === null ? hasData() : days > 14;
+  const stale = backupDue();
   const el = $("#status");
   el.innerHTML = (stale ? '<span class="dot bad"></span>' : '<span class="dot ok"></span>') + '<span>Backup</span>';
 }
@@ -258,7 +266,7 @@ async function exportBackup() {
   try {
     if (navigator.canShare && navigator.canShare({files:[file]})) { await navigator.share({files:[file], title:name}); }
     else { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
-    settings.lastBackup = Date.now(); persist(); setStatus(); toast("Backup made"); openSettings();
+    settings.lastBackup = Date.now(); settings.changes = 0; persist(); setStatus(); render(); closeModal(); toast("Backed up. See you next Sunday.");
   } catch (e) { if (e && e.name !== "AbortError") toast("Couldn't make the backup. Try again."); }
 }
 function importBackup(file) {
@@ -277,7 +285,7 @@ function importBackup(file) {
 function openSettings() {
   const days = settings.lastBackup ? Math.floor((Date.now() - settings.lastBackup) / 864e5) : null;
   const body =
-    '<div class="card stripe-good"><div class="t">Your data stays on this phone</div><div class="s">Nothing is uploaded anywhere. The flip side: if you lose or reset this phone, the only copy is your latest backup. Make one every week or two and save it to Files, iCloud Drive, or email it to yourself.</div></div>' +
+    '<div class="card stripe-good"><div class="t">Your data stays on this phone</div><div class="s">Nothing is uploaded anywhere. The flip side: if you lose or reset this phone, the only copy is your latest backup. Every Sunday evening the app reminds you to back up: tap <b>Back up now</b>, then Save to Files → iCloud Drive → ResiTech (make the folder the first time).</div></div>' +
     '<div class="row"><button class="btn primary" id="b_exp">Make a backup</button><span class="note">' + (days === null ? "No backup yet" : days === 0 ? "Last backup: today" : "Last backup: " + days + " day" + (days === 1 ? "" : "s") + " ago") + '</span></div>' +
     '<div class="field"><label for="b_imp">Restore from a backup</label><input type="file" id="b_imp" accept=".json,application/json"><span class="note">This replaces everything in the app with what\'s in the backup.</span></div>' +
     '<h2>Fill-ins for your messages</h2>' +
@@ -316,7 +324,7 @@ function render() {
   const m = $("#main");
   let html = "";
   if (mode === "nostore") html += '<div class="banner">This browser is blocking storage, so nothing will be kept. Open the app from your home screen icon in Safari, not in private browsing.</div>';
-  else if (hasData() && (!settings.lastBackup || Date.now() - settings.lastBackup > 14 * 864e5)) html += '<div class="banner">Your only copy is on this phone. <button class="btn small" data-act="settings">Make a backup</button></div>';
+  else if (backupDue()) html += '<div class="banner backup-bar"><div><b>Time for your weekly backup.</b><br>' + (settings.lastBackup ? settings.changes + ' change' + (settings.changes === 1 ? '' : 's') + ' since ' + new Date(settings.lastBackup).toLocaleDateString("en-CA", {month:"short", day:"numeric"}) + '.' : 'You haven\'t backed up yet.') + ' Tap, then <b>Save to Files → iCloud Drive → ResiTech</b>.</div><button class="btn primary" data-act="backup-now">Back up now</button></div>';
   html += ({today:viewToday, people:viewPeople, jobs:viewJobs, rent:viewRent, templates:viewTemplates}[tab])();
   m.innerHTML = html;
 }
@@ -733,6 +741,7 @@ const ACT = {
   tab: d => { tab = d.k; history.replaceState(null, "", "#" + tab); renderTabs(); render(); window.scrollTo(0, 0); },
   close: closeModal,
   settings: openSettings,
+  "backup-now": exportBackup,
   inbox: openInbox,
   compose: () => openCompose(),
   "compose-to": d => openCompose({contactId: d.id}),
